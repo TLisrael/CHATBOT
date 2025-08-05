@@ -287,6 +287,30 @@ TEMA ESPECÍFICO: {topic}
 
 Produza apenas o texto final completo, com 2200 palavras no minimo."""
     
+    def generate_continuation_prompt(self, style_description: str, existing_text: str) -> str:
+        """Cria prompt para continuar um texto existente mantendo o estilo"""
+        last_part = existing_text[-800:] if len(existing_text) > 800 else existing_text
+        
+        return f"""Continue escrevendo este texto em português, mantendo exatamente o mesmo estilo consolidado identificado:
+
+ESTILO CONSOLIDADO IDENTIFICADO:
+{style_description}
+
+TEXTO EXISTENTE (últimos parágrafos para contexto):
+{last_part}
+
+INSTRUÇÕES ESPECÍFICAS:
+- Continue a partir de onde o texto parou, de forma natural e fluida
+- Mantenha absoluta fidelidade ao tom e formalidade já estabelecidos
+- Use as mesmas estruturas frasais e padrões organizacionais
+- Aplique o vocabulário e terminologia no mesmo nível
+- Utilize conectivos e transições no estilo identificado
+- NÃO repita conteúdo já escrito
+- Continue desenvolvendo o tema de forma coerente
+- Gere aproximadamente 800-1200 palavras adicionais
+
+Produza apenas a continuação do texto, sem repetir o que já foi escrito."""
+    
     def call_ollama_api(self, prompt: str, max_tokens: int = 2000, temperature: float = 0.7) -> str:
         """Chama a API do Ollama"""
         try:
@@ -331,6 +355,11 @@ Produza apenas o texto final completo, com 2200 palavras no minimo."""
         """Gera conteúdo baseado no estilo consolidado"""
         prompt = self.generate_content_prompt(style_description, topic)
         return self.call_ollama_api(prompt, max_tokens=2500, temperature=0.7)
+    
+    def continue_content(self, style_description: str, existing_text: str) -> str:
+        """Continua um texto existente mantendo o mesmo estilo"""
+        prompt = self.generate_continuation_prompt(style_description, existing_text)
+        return self.call_ollama_api(prompt, max_tokens=1500, temperature=0.7)
 
 
 class DocumentGenerator:
@@ -377,13 +406,15 @@ def init_session_state():
         st.session_state.style_description = None
     if 'current_folder' not in st.session_state:
         st.session_state.current_folder = None
+    if 'current_content' not in st.session_state:
+        st.session_state.current_content = ""
 
 
 def main():
     """Função principal da aplicação Streamlit"""
     
     st.set_page_config(
-        page_title="IA Agent Procedure | Powered by WOOD",
+        page_title="SmartOps AI | Powered by WOOD",
         page_icon="📚",
         layout="wide",
         initial_sidebar_state="expanded"
@@ -420,7 +451,7 @@ def main():
                 )
                 text_generator.model_name = selected_model
                 
-                timeout_options = {60: "Normal (60s)", 120: "Lento (120s)", 180: "Muito Lento (180s)"}
+                timeout_options = {240: "Normal (240s)", 480: "Lento (480s)", 700: "Muito Lento (700s)"}
                 selected_timeout = st.selectbox(
                     "Timeout:",
                     list(timeout_options.keys()),
@@ -502,9 +533,8 @@ def main():
                                 progress_bar.progress(progress)
                                 status_text.text(message)
                             
-                            # Correção: Adicionar current_path como primeiro argumento
                             consolidated_analysis = analyzer.analyze_multiple_documents(
-                                current_path,  # Adicionar o caminho da pasta
+                                current_path, 
                                 progress_callback
                             )
                             
@@ -557,6 +587,7 @@ def main():
                         
                         with st.spinner("✍️ Gerando novo texto baseado no estilo ..."):
                             generated_content = text_generator.generate_content(style_description, new_topic)
+                            st.session_state.current_content = generated_content
                         
                         st.success("✅ Texto gerado com base no estilo de escrita!")
                         
@@ -565,14 +596,14 @@ def main():
                             output_filename = f"texto_consolidado_{timestamp}.docx"
                             temp_output_path = os.path.join(tempfile.gettempdir(), output_filename)
                             
-                            success = doc_generator.save_to_docx(generated_content, temp_output_path)
+                            success = doc_generator.save_to_docx(st.session_state.current_content, temp_output_path)
                             
                             if success:
                                 st.success("✅ Documento salvo!")
                             else:
                                 st.error("❌ Erro ao salvar documento")
                         
-                        word_count = len(generated_content.split())
+                        word_count = len(st.session_state.current_content.split())
                         processing_time = time.time() - start_time
                         
                         st.session_state.documents_analyzed.append({
@@ -588,7 +619,7 @@ def main():
                         })
                         
                         st.session_state.consolidated_analysis = {
-                            'content': generated_content,
+                            'content': st.session_state.current_content,
                             'output_path': temp_output_path,
                             'output_filename': output_filename,
                             'word_count': word_count,
@@ -623,26 +654,88 @@ def main():
             with col_info3:
                 st.metric("Tempo", f"{st.session_state.consolidated_analysis['processing_time']:.1f}s")
             
+            if st.session_state.style_description and st.session_state.current_content:
+                if st.button("➕ Continuar Gerando Texto", use_container_width=True, type="secondary"):
+                    try:
+                        with st.spinner("✍️ Continuando a geração do texto..."):
+                            continuation = text_generator.continue_content(
+                                st.session_state.style_description, 
+                                st.session_state.current_content
+                            )
+                            
+                            st.session_state.current_content += "\n\n" + continuation
+                            
+                            new_word_count = len(st.session_state.current_content.split())
+                            st.session_state.consolidated_analysis['content'] = st.session_state.current_content
+                            st.session_state.consolidated_analysis['word_count'] = new_word_count
+                            
+                            doc_generator = DocumentGenerator()
+                            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                            output_filename = f"texto_consolidado_expandido_{timestamp}.docx"
+                            temp_output_path = os.path.join(tempfile.gettempdir(), output_filename)
+                            
+                            success = doc_generator.save_to_docx(st.session_state.current_content, temp_output_path)
+                            
+                            if success:
+                                st.session_state.consolidated_analysis['output_path'] = temp_output_path
+                                st.session_state.consolidated_analysis['output_filename'] = output_filename
+                                st.success(f"✅ Texto expandido! Agora tem {new_word_count} palavras (+{new_word_count - st.session_state.consolidated_analysis.get('original_word_count', new_word_count)} palavras)")
+                                st.rerun()
+                            
+                    except Exception as e:
+                        st.error(f"❌ Erro ao continuar o texto: {str(e)}")
+            
             if os.path.exists(st.session_state.consolidated_analysis['output_path']):
                 with open(st.session_state.consolidated_analysis['output_path'], 'rb') as file:
                     st.download_button(
-                        label="Baixar DOCX",
+                        label="📥 Baixar DOCX",
                         data=file.read(),
                         file_name=st.session_state.consolidated_analysis['output_filename'],
                         mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                         use_container_width=True
                     )
             
-            with st.expander("Resumo do Estilo", expanded=False):
+            with st.expander("📝 Resumo do Estilo", expanded=False):
                 st.markdown(st.session_state.consolidated_analysis['style_description'])
             
-            with st.expander("Prévia do Texto Gerado", expanded=True):
+            with st.expander("📖 Prévia do Texto Gerado", expanded=True):
+                # Mostra informações sobre o texto
+                current_word_count = len(st.session_state.current_content.split())
+                st.info(f"📊 Texto atual: {current_word_count} palavras, {len(st.session_state.current_content.split('.'))} sentenças")
+                
                 st.text_area(
-                    "Conteúdo:",
-                    value=st.session_state.consolidated_analysis['content'],
+                    "Conteúdo completo:",
+                    value=st.session_state.current_content,
                     height=400,
-                    disabled=True
+                    disabled=True,
+                    key="content_preview"
                 )
+                
+                if st.checkbox("🖋️ Permitir edição manual"):
+                    edited_content = st.text_area(
+                        "Edite o texto:",
+                        value=st.session_state.current_content,
+                        height=300,
+                        key="manual_edit"
+                    )
+                    
+                    if st.button("💾 Salvar Edições"):
+                        st.session_state.current_content = edited_content
+                        st.session_state.consolidated_analysis['content'] = edited_content
+                        st.session_state.consolidated_analysis['word_count'] = len(edited_content.split())
+                        
+                        doc_generator = DocumentGenerator()
+                        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                        output_filename = f"texto_editado_{timestamp}.docx"
+                        temp_output_path = os.path.join(tempfile.gettempdir(), output_filename)
+                        
+                        success = doc_generator.save_to_docx(edited_content, temp_output_path)
+                        
+                        if success:
+                            st.session_state.consolidated_analysis['output_path'] = temp_output_path
+                            st.session_state.consolidated_analysis['output_filename'] = output_filename
+                            st.success("✅ Edições salvas!")
+                            st.rerun()
         else:
             
             if docs_in_folder:
@@ -650,7 +743,6 @@ def main():
             else:
                 st.info("📋 Adicione documentos PDF na pasta raiz para começar!")
         
-        # Histórico de análises
         if st.session_state.documents_analyzed:
             st.divider()
             st.subheader("📚 Histórico de Análises")
@@ -674,7 +766,7 @@ def main():
         for file in os.listdir(temp_dir):
             if file.startswith('texto_consolidado_') and file.endswith('.docx'):
                 file_path = os.path.join(temp_dir, file)
-                if os.path.getctime(file_path) < time.time() - 3600:
+                if os.path.getctime(file_path) < time.time() - 3600:  
                     os.remove(file_path)
     except:
         pass
@@ -682,7 +774,7 @@ def main():
     st.divider()
     st.markdown("""
     <div style='text-align: center; color: #666; font-size: 0.8em;'>
-         SmartOps AI| Powered by WOOD<br>
+         SmartOps AI | Powered by WOOD<br>
     </div>
     """, unsafe_allow_html=True)
 
