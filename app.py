@@ -145,10 +145,10 @@ class DocumentAnalyzer:
         """Analisa múltiplos documentos e consolida o estilo"""
         documents = self.find_documents_in_folder(folder_path)
         
-        if not documents:
-            raise Exception(f"Nenhum documento PDF ou DOCX encontrado em: {folder_path}")
+       # if not documents:
+          #  raise Exception(f"Nenhum documento PDF ou DOCX encontrado em: {folder_path}")
         
-        st.info(f"Encontrados {len(documents)} documentos para análise")
+        # st.info(f"Encontrados {len(documents)} documentos para análise")
         
         individual_analyses = []
         all_texts = []
@@ -415,16 +415,16 @@ def main():
     
     st.set_page_config(
         page_title="SmartOps AI | Powered by WOOD",
-        page_icon="📚",
+        page_icon="🤖",
         layout="wide",
         initial_sidebar_state="expanded"
     )
     
     init_session_state()
     
-    st.title("SmartOps AI")
+    st.title("🧠SmartOps AI ")
     st.markdown("*Sistema inteligente para análise de estilo consolidado de múltiplos documentos PDF*")
-    
+    st.text("")
     with st.sidebar:
         st.header("⚙️ Configurações")
         
@@ -482,24 +482,24 @@ def main():
         show_consolidated_stats = st.checkbox("Estatísticas consolidadas", value=True)
         show_style_analysis = st.checkbox("Descrição do estilo", value=True)
         
-        st.divider()
+        # st.divider()
         
-        st.subheader(" Pasta Atual")
+        #st.subheader(" Pasta Atual")
         current_path = os.getcwd()
-        st.code(current_path)
+         #st.code(current_path)
         
         analyzer = DocumentAnalyzer()
         docs_in_folder = analyzer.find_documents_in_folder(current_path)
         
-        if docs_in_folder:
-            st.success(f"✅ {len(docs_in_folder)} documentos encontrados")
+         #if docs_in_folder:
+             #st.success(f"✅ {len(docs_in_folder)} documentos encontrados")
             
-            with st.expander("📄 Documentos encontrados"):
-                for doc in docs_in_folder:
-                    file_size = os.path.getsize(doc) / 1024  # KB
-                    st.write(f"• {os.path.basename(doc)} ({file_size:.1f} KB)")
-        else:
-            st.warning("⚠️ Nenhum PDF/DOCX encontrado na pasta raiz")
+            # with st.expander("📄 Documentos encontrados"):
+               #  for doc in docs_in_folder:
+                #     file_size = os.path.getsize(doc) / 1024  # KB
+                  #   st.write(f"• {os.path.basename(doc)} ({file_size:.1f} KB)")
+         #else:
+           #  st.warning("⚠️ Nenhum PDF/DOCX encontrado na pasta raiz")
     
     # Conteúdo principal
     col1, col2 = st.columns([1, 1])
@@ -507,7 +507,7 @@ def main():
     with col1:
         
         if docs_in_folder:
-            st.info(f" {len(docs_in_folder)} documentos prontos para análise de escrita")
+           #st.info(f" {len(docs_in_folder)} documentos prontos para análise de escrita")
                         
             new_topic = st.text_input(
                 "💡 Tema para o novo texto:",
@@ -541,26 +541,26 @@ def main():
                             progress_bar.progress(1.0)
                             status_text.text("✅ Análise consolidada concluída!")
                         
-                        st.success(f"✅ {consolidated_analysis['documents_count']} documentos analisados!")
+                       # st.success(f"✅ {consolidated_analysis['documents_count']} documentos analisados!")
                         
-                        if consolidated_analysis['failed_count'] > 0:
-                            st.warning(f"⚠️ {consolidated_analysis['failed_count']} documentos falharam na análise")
+                       # if consolidated_analysis['failed_count'] > 0:
+                           # st.warning(f"⚠️ {consolidated_analysis['failed_count']} documentos falharam na análise")
                         
-                        if show_consolidated_stats:
-                            with st.expander("📊 Estatísticas Consolidadas", expanded=True):
-                                col_a, col_b, col_c, col_d = st.columns(4)
-                                with col_a:
-                                    st.metric("Documentos", consolidated_analysis['documents_count'])
-                                    st.metric("Total Palavras", f"{consolidated_analysis['total_words']:,}")
-                                with col_b:
-                                    st.metric("Total Sentenças", f"{consolidated_analysis['total_sentences']:,}")
-                                    st.metric("Total Parágrafos", f"{consolidated_analysis['total_paragraphs']:,}")
-                                with col_c:
-                                    st.metric("Vocabulário Único", f"{consolidated_analysis['unique_words_across_all']:,}")
-                                    st.metric("Média Sent./Doc", f"{consolidated_analysis['total_sentences']/consolidated_analysis['documents_count']:.0f}")
-                                with col_d:
-                                    st.metric("Média Palavras/Sent.", f"{consolidated_analysis['avg_sentence_length']:.1f}")
-                                    st.metric("Riqueza Vocabular", f"{consolidated_analysis['avg_vocabulary_richness']:.3f}")
+                        #if show_consolidated_stats:
+                           # with st.expander("📊 Estatísticas Consolidadas", expanded=True):
+                             #   col_a, col_b, col_c, col_d = st.columns(4)
+                               # with col_a:
+                               #     st.metric("Documentos", consolidated_analysis['documents_count'])
+                              #      st.metric("Total Palavras", f"{consolidated_analysis['total_words']:,}")
+                             #   with col_b:
+                             #       st.metric("Total Sentenças", f"{consolidated_analysis['total_sentences']:,}")
+                             #       st.metric("Total Parágrafos", f"{consolidated_analysis['total_paragraphs']:,}")
+                             #   with col_c:
+                             #       st.metric("Vocabulário Único", f"{consolidated_analysis['unique_words_across_all']:,}")
+                             #       st.metric("Média Sent./Doc", f"{consolidated_analysis['total_sentences']/consolidated_analysis['documents_count']:.0f}")
+                              #  with col_d:
+                              #      st.metric("Média Palavras/Sent.", f"{consolidated_analysis['avg_sentence_length']:.1f}")
+                               #     st.metric("Riqueza Vocabular", f"{consolidated_analysis['avg_vocabulary_richness']:.3f}")
                         
                         if show_detailed_analysis:
                             with st.expander("📋 Análise Detalhada por Documento", expanded=False):
@@ -736,12 +736,12 @@ def main():
                             st.session_state.consolidated_analysis['output_filename'] = output_filename
                             st.success("✅ Edições salvas!")
                             st.rerun()
-        else:
+        #else:
             
-            if docs_in_folder:
-                st.success("📋 Documentos detectados - pronto para começar!")
-            else:
-                st.info("📋 Adicione documentos PDF na pasta raiz para começar!")
+            #if docs_in_folder:
+                #st.success("📋 Documentos detectados - pronto para começar!")
+            #else:
+                #st.info("📋 Adicione documentos PDF na pasta raiz para começar!")
         
         if st.session_state.documents_analyzed:
             st.divider()
